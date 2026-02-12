@@ -1,36 +1,31 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# 音楽カプセルSNS プロジェクト
 
-## Getting Started
+このフォルダには、自律型AIコーディングエージェント（Claude Codeなど）が「音楽カプセルSNS」を構築するための完全なプロジェクト計画とタスクリストが含まれています。
 
-First, run the development server:
+## 開始方法 (Claude Code への指示)
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+以下のプロンプトをコピーして、Claude Code に貼り付けて実行してください。
+
+```text
+現在のディレクトリにある `implementation_plan.md` (実装計画書) と `task.md` (タスクリスト) を読み込んでください。
+これらは「音楽カプセルSNS」を構築するための詳細な指示書です。
+`task.md` に記載されたタスクを上から順に実行し、コードを記述・実行してアプリケーションを完成させてください。
+
+特に重要な要件：
+1. **物理演算**: Matter.jsを使用して、カプセルが落下・堆積する挙動を実装してください。
+2. **クロスプラットフォーム**: 投稿時にSpotify, Apple Music, YouTubeなどのURLが入力された場合、Odesli API等を使用して自動的に他プラットフォームのリンクも生成・保存するようにしてください。
+3. **月別アーカイブ**: 画面全体を「今月の箱」とし、横スワイプで過去の月に移動できるUIにしてください。
+
+SupabaseのURLやキーが必要になったタイミングで、私（ユーザー）に入力を求めてください。
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## 各ファイルについて
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+-   **implementation_plan.md**: 技術スタック、データベース設計、各コンポーネントの詳細な仕様書です。
+-   **task.md**: 実装手順をステップごとに記述したチェックリストです。AIはこのリストに従って作業を進めます。
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
-
-## Learn More
-
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## 主な機能
+-   **落下するカプセル**: 物理演算による心地よい動き。
+-   **月ごとのアーカイブ**: 横スワイプで時間軸を移動。
+-   **クロスプラットフォーム**: どのサービスのリンクでも、全ユーザーがアクセス可能に。
+-   **ガチャ演出**: 開封時のワクワク感を演出。
