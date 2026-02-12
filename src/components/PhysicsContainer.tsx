@@ -18,6 +18,8 @@ const WALL_THICKNESS = 50;
 const HEADER_HEIGHT = 48;
 const SLEEP_SPEED_THRESHOLD = 0.5;
 const SLEEP_CHECK_INTERVAL = 3000;
+const TAP_THRESHOLD_DISTANCE = 10;
+const TAP_THRESHOLD_TIME = 250;
 
 interface CapsuleState {
   id: string;
@@ -49,6 +51,8 @@ export const PhysicsContainer = forwardRef<
   );
   const [capsuleStates, setCapsuleStates] = useState<CapsuleState[]>([]);
   const animFrameRef = useRef<number>(0);
+  const onCapsuleClickRef = useRef(onCapsuleClick);
+  onCapsuleClickRef.current = onCapsuleClick;
 
   // Initialize physics engine
   useEffect(() => {
@@ -58,14 +62,12 @@ export const PhysicsContainer = forwardRef<
     const width = container.clientWidth;
     const height = container.clientHeight;
 
-    // Create engine with sleeping enabled for performance
     const engine = Matter.Engine.create({
       gravity: { x: 0, y: 1.2, scale: 0.001 },
       enableSleeping: true,
     });
     engineRef.current = engine;
 
-    // Create walls (floor, left, right)
     const floor = Matter.Bodies.rectangle(
       width / 2,
       height + WALL_THICKNESS / 2,
@@ -90,22 +92,20 @@ export const PhysicsContainer = forwardRef<
 
     Matter.Composite.add(engine.world, [floor, leftWall, rightWall]);
 
-    // Create runner
     const runner = Matter.Runner.create();
     runnerRef.current = runner;
     Matter.Runner.run(runner, engine);
 
-    // Play sound on collision
+    // Sound on collision
     Matter.Events.on(engine, "collisionStart", (event) => {
       for (const pair of event.pairs) {
-        // Only play sound for capsule-to-wall or capsule-to-capsule first impact
         const speed = Math.max(
           pair.bodyA.speed || 0,
           pair.bodyB.speed || 0
         );
         if (speed > 2) {
           playDropSound();
-          break; // Only one sound per frame
+          break;
         }
       }
     });
@@ -127,7 +127,7 @@ export const PhysicsContainer = forwardRef<
     };
     animFrameRef.current = requestAnimationFrame(syncPositions);
 
-    // Periodically sleep static bodies for performance
+    // Sleep optimization
     const sleepInterval = setInterval(() => {
       bodiesMapRef.current.forEach(({ body }) => {
         if (!body.isSleeping && body.speed < SLEEP_SPEED_THRESHOLD) {
@@ -145,7 +145,87 @@ export const PhysicsContainer = forwardRef<
     };
   }, []);
 
-  // Drop capsules function
+  // Mouse constraint + tap detection
+  // The key fix: track touch start position/time to distinguish tap from drag.
+  // On tap, use Matter.Query.point to find the capsule body and trigger onClick.
+  useEffect(() => {
+    const container = containerRef.current;
+    const engine = engineRef.current;
+    if (!container || !engine) return;
+
+    const mouse = Matter.Mouse.create(container);
+    const mouseConstraint = Matter.MouseConstraint.create(engine, {
+      mouse,
+      constraint: {
+        stiffness: 0.2,
+        render: { visible: false },
+      },
+    });
+
+    mouse.element.removeEventListener(
+      "mousewheel",
+      (mouse as any).mousewheel
+    );
+    mouse.element.removeEventListener(
+      "DOMMouseScroll",
+      (mouse as any).mousewheel
+    );
+
+    Matter.Composite.add(engine.world, mouseConstraint);
+
+    // --- Tap detection (works on both mobile and desktop) ---
+    let pointerStart: { x: number; y: number; time: number } | null = null;
+
+    const handlePointerDown = (e: PointerEvent) => {
+      const rect = container.getBoundingClientRect();
+      pointerStart = {
+        x: e.clientX - rect.left,
+        y: e.clientY - rect.top,
+        time: Date.now(),
+      };
+    };
+
+    const handlePointerUp = (e: PointerEvent) => {
+      if (!pointerStart) return;
+
+      const rect = container.getBoundingClientRect();
+      const endX = e.clientX - rect.left;
+      const endY = e.clientY - rect.top;
+      const dx = endX - pointerStart.x;
+      const dy = endY - pointerStart.y;
+      const distance = Math.sqrt(dx * dx + dy * dy);
+      const duration = Date.now() - pointerStart.time;
+
+      pointerStart = null;
+
+      // If short tap with minimal movement → it's a click, not a drag
+      if (distance < TAP_THRESHOLD_DISTANCE && duration < TAP_THRESHOLD_TIME) {
+        const point = { x: endX, y: endY };
+        const bodies = Matter.Composite.allBodies(engine.world);
+        const hits = Matter.Query.point(bodies, point);
+
+        for (const hit of hits) {
+          if (hit.isStatic) continue;
+          const entry = bodiesMapRef.current.get(hit.label);
+          if (entry) {
+            onCapsuleClickRef.current(entry.post);
+            return;
+          }
+        }
+      }
+    };
+
+    container.addEventListener("pointerdown", handlePointerDown);
+    container.addEventListener("pointerup", handlePointerUp);
+
+    return () => {
+      container.removeEventListener("pointerdown", handlePointerDown);
+      container.removeEventListener("pointerup", handlePointerUp);
+      Matter.Composite.remove(engine.world, mouseConstraint);
+    };
+  }, []);
+
+  // Drop capsules
   const dropCapsules = useCallback((postsToAdd: Post[]) => {
     const engine = engineRef.current;
     const container = containerRef.current;
@@ -176,7 +256,7 @@ export const PhysicsContainer = forwardRef<
     });
   }, []);
 
-  // Clear all capsules
+  // Clear
   const clear = useCallback(() => {
     const engine = engineRef.current;
     if (!engine) return;
@@ -193,49 +273,16 @@ export const PhysicsContainer = forwardRef<
     clear,
   ]);
 
-  // Auto-drop when posts change
   useEffect(() => {
     if (posts.length > 0) {
       dropCapsules(posts);
     }
   }, [posts, dropCapsules]);
 
-  // Mouse constraint for interactive dragging (stir/throw capsules)
-  useEffect(() => {
-    const container = containerRef.current;
-    const engine = engineRef.current;
-    if (!container || !engine) return;
-
-    const mouse = Matter.Mouse.create(container);
-    const mouseConstraint = Matter.MouseConstraint.create(engine, {
-      mouse,
-      constraint: {
-        stiffness: 0.2,
-        render: { visible: false },
-      },
-    });
-
-    // Prevent default scrolling on the container
-    mouse.element.removeEventListener(
-      "mousewheel",
-      (mouse as any).mousewheel
-    );
-    mouse.element.removeEventListener(
-      "DOMMouseScroll",
-      (mouse as any).mousewheel
-    );
-
-    Matter.Composite.add(engine.world, mouseConstraint);
-
-    return () => {
-      Matter.Composite.remove(engine.world, mouseConstraint);
-    };
-  }, []);
-
   return (
     <div
       ref={containerRef}
-      className="absolute inset-0"
+      className="absolute inset-0 touch-none"
       style={{ top: HEADER_HEIGHT }}
     >
       {capsuleStates.map((capsule) => (
@@ -246,7 +293,6 @@ export const PhysicsContainer = forwardRef<
           y={capsule.y}
           angle={capsule.angle}
           radius={CAPSULE_RADIUS}
-          onClick={onCapsuleClick}
         />
       ))}
     </div>

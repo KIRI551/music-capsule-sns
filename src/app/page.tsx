@@ -1,23 +1,24 @@
 "use client";
 
 import { useState, useCallback, useEffect } from "react";
-import { Plus, LogIn, LogOut, User } from "lucide-react";
+import { Plus, LogIn, LogOut, User, Heart } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { TimeStream } from "@/components/TimeStream";
 import { PostModal } from "@/components/PostModal";
 import { CapsuleDetail } from "@/components/CapsuleDetail";
 import { AuthModal } from "@/components/AuthModal";
+import { FavoritesView } from "@/components/FavoritesView";
 import { Post } from "@/types";
 import type { User as SupabaseUser } from "@supabase/supabase-js";
 
 export default function Home() {
   const [showPostModal, setShowPostModal] = useState(false);
   const [showAuthModal, setShowAuthModal] = useState(false);
+  const [showFavorites, setShowFavorites] = useState(false);
   const [selectedPost, setSelectedPost] = useState<Post | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
   const [user, setUser] = useState<SupabaseUser | null>(null);
 
-  // Listen for auth state changes
   useEffect(() => {
     supabase.auth.getUser().then(({ data: { user } }) => {
       setUser(user);
@@ -46,6 +47,14 @@ export default function Home() {
       setShowAuthModal(true);
     } else {
       setShowPostModal(true);
+    }
+  };
+
+  const handleFavoritesClick = () => {
+    if (!user) {
+      setShowAuthModal(true);
+    } else {
+      setShowFavorites(true);
     }
   };
 
@@ -86,20 +95,32 @@ export default function Home() {
         )}
       </header>
 
-      {/* Main - Physics container with month navigation */}
+      {/* Main */}
       <TimeStream
         refreshKey={refreshKey}
         onCapsuleClick={handleCapsuleClick}
       />
 
-      {/* FAB - Post button */}
-      <button
-        onClick={handleFabClick}
-        className="absolute bottom-6 right-6 z-30 flex h-14 w-14 items-center justify-center rounded-full bg-primary text-white shadow-lg transition-transform hover:scale-105 active:scale-95"
-        aria-label="投稿する"
-      >
-        <Plus size={28} />
-      </button>
+      {/* FABs */}
+      <div className="absolute bottom-6 right-6 z-30 flex flex-col gap-3">
+        {/* Favorites button */}
+        <button
+          onClick={handleFavoritesClick}
+          className="flex h-12 w-12 items-center justify-center rounded-full bg-surface-light text-accent shadow-lg transition-transform hover:scale-105 active:scale-95"
+          aria-label="お気に入り"
+        >
+          <Heart size={22} fill="currentColor" />
+        </button>
+
+        {/* Post button */}
+        <button
+          onClick={handleFabClick}
+          className="flex h-14 w-14 items-center justify-center rounded-full bg-primary text-white shadow-lg transition-transform hover:scale-105 active:scale-95"
+          aria-label="投稿する"
+        >
+          <Plus size={28} />
+        </button>
+      </div>
 
       {/* Auth Modal */}
       {showAuthModal && (
@@ -114,6 +135,14 @@ export default function Home() {
         <PostModal
           onClose={() => setShowPostModal(false)}
           onPostCreated={handlePostCreated}
+        />
+      )}
+
+      {/* Favorites View */}
+      {showFavorites && (
+        <FavoritesView
+          onClose={() => setShowFavorites(false)}
+          onSelectPost={(post) => setSelectedPost(post)}
         />
       )}
 

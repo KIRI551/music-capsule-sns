@@ -8,15 +8,14 @@ interface CapsuleProps {
   y: number;
   angle: number;
   radius: number;
-  onClick: (post: Post) => void;
 }
 
-export function Capsule({ post, x, y, angle, radius, onClick }: CapsuleProps) {
+export function Capsule({ post, x, y, angle, radius }: CapsuleProps) {
   const diameter = radius * 2;
 
   return (
     <div
-      className="absolute cursor-pointer"
+      className="absolute pointer-events-none"
       style={{
         left: x - radius,
         top: y - radius,
@@ -25,7 +24,6 @@ export function Capsule({ post, x, y, angle, radius, onClick }: CapsuleProps) {
         transform: `rotate(${angle}rad)`,
         willChange: "left, top, transform",
       }}
-      onClick={() => onClick(post)}
     >
       {/* Capsule body */}
       <div className="capsule-glow relative h-full w-full overflow-hidden rounded-full border-2 border-white/20">
@@ -44,10 +42,10 @@ export function Capsule({ post, x, y, angle, radius, onClick }: CapsuleProps) {
         )}
 
         {/* Plastic shine overlay */}
-        <div className="capsule-shine absolute inset-0 rounded-full pointer-events-none" />
+        <div className="capsule-shine absolute inset-0 rounded-full" />
 
         {/* Plastic rim */}
-        <div className="absolute inset-0 rounded-full border border-white/10 pointer-events-none" />
+        <div className="absolute inset-0 rounded-full border border-white/10" />
       </div>
     </div>
   );
